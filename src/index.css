@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background: #0b0f19;
+    min-height: 100vh;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.25);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.4);
+  }
+}
+
+/* Panel plano: fondo sólido, borde simple, sin blur ni transparencia */
+.glass-panel {
+  background: #111827;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-panel-hover {
+  transition: border-color 0.15s ease;
+}
+
+.glass-panel-hover:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+/* Botón principal: color sólido, sin degradé ni animación de elevación */
+.btn-premium {
+  background: #4f46e5;
+  transition: background-color 0.15s ease;
+}
+
+.btn-premium:hover {
+  background: #4338ca;
+}
+
+.btn-premium:active {
+  background: #3730a3;
+}

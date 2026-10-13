@@ -1,0 +1,8 @@
+{
+  "appId": "com.takana.pos",
+  "appName": "Takana POS",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "http"
+  }
+}
