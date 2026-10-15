@@ -5,6 +5,7 @@ import { api, getApiUrl } from '../api';
 import { Search, Camera, Package, Tag } from 'lucide-react';
 import BarcodeScannerModal from './BarcodeScannerModal';
 import { useBusquedaInteligente, ordenarPorBusqueda, AvisoBusqueda } from '../busqueda';
+import { leerCatalogo } from '../sinConexion';
 
 const NATIVE_SCAN_FORMATS = [
   BarcodeFormat.Ean13, BarcodeFormat.Ean8, BarcodeFormat.UpcA, BarcodeFormat.UpcE,
@@ -24,7 +25,15 @@ export default function ConsultaPrecio() {
   const busqueda = useBusquedaInteligente(search);
 
   useEffect(() => {
-    api.get('/api/productos').then(setProductos).catch(console.error).finally(() => setLoading(false));
+    api.get('/api/productos')
+      .then(setProductos)
+      .catch((e) => {
+        // Sin conexión: la última copia guardada por el POS en este equipo
+        const guardado = leerCatalogo();
+        if (guardado) setProductos(guardado.prods);
+        else console.error(e);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const handleScanResult = (sku) => {

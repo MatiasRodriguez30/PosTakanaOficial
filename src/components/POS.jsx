@@ -2,7 +2,9 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { BarcodeScanner, BarcodeFormat } from '@capacitor-mlkit/barcode-scanning';
 import { CartContext } from '../context/CartContext';
+import { AuthContext } from '../context/AuthContext';
 import { api, getApiUrl } from '../api';
+import { guardarCatalogo, leerCatalogo, encolarVenta, nuevoIdVenta } from '../sinConexion';
 import BarcodeScannerModal from './BarcodeScannerModal';
 import { useBusquedaInteligente, ordenarPorBusqueda, AvisoBusqueda } from '../busqueda';
 import { Search, Plus, Minus, Trash2, CreditCard, ShoppingCart, Tag, CheckCircle, Package, X, ChevronRight, ChevronDown, ChevronUp, Camera } from 'lucide-react';
@@ -40,7 +42,19 @@ const POS = () => {
   const barcodeBuffer = useRef('');
   const lastKeyTime = useRef(Date.now());
 
+  // Sin conexión
+  const { user } = useContext(AuthContext);
+  const [catalogoGuardadoEn, setCatalogoGuardadoEn] = useState(null);
+  const [aviso, setAviso] = useState('');
+  const cobrando = useRef(false);
+
   useEffect(() => {
+    const mostrarCatalogo = ({ prods, cats, pagos }) => {
+      // Solo mostrar productos que tienen al menos una presentación
+      setProductos(prods.filter(p => p.presentaciones && p.presentaciones.length > 0));
+      setCategorias(cats);
+      setMediosPago(pagos);
+    };
     const loadData = async () => {
       try {
         const [prods, cats, pagos] = await Promise.all([
@@ -48,12 +62,17 @@ const POS = () => {
           api.get('/api/categorias'),
           api.get('/api/medios-pago')
         ]);
-        // Solo mostrar productos que tienen al menos una presentación
-        setProductos(prods.filter(p => p.presentaciones && p.presentaciones.length > 0));
-        setCategorias(cats);
-        setMediosPago(pagos);
+        mostrarCatalogo({ prods, cats, pagos });
+        guardarCatalogo({ prods, cats, pagos });
+        setCatalogoGuardadoEn(null);
       } catch (error) {
         console.error("Error cargando datos:", error);
+        // Sin conexión: seguir con la última copia guardada en el equipo
+        const guardado = leerCatalogo();
+        if (guardado) {
+          mostrarCatalogo(guardado);
+          setCatalogoGuardadoEn(guardado.guardadoEn);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -147,18 +166,44 @@ const POS = () => {
 
   const handleConfirmSale = async () => {
     if (!selectedMedioPago) { alert('Seleccioná un medio de pago.'); return; }
+    if (cobrando.current) return;  // evita cobrar dos veces con doble Enter
+    cobrando.current = true;
+    // Se arma una sola vez: si no llega al servidor, se guarda tal cual (mismo
+    // idCliente, la hora y el precio de ahora) y se envía cuando vuelva internet.
+    const venta = {
+      idCliente: nuevoIdVenta(),
+      fechaRegistro: new Date().toISOString(),
+      codMedioPago: selectedMedioPago,
+      detalles: cartItems.map(item => ({
+        idProductoTipoPresentacion: item.selectedPtp.id,
+        cantidadRegistroPedido: item.cantidad,
+        precioUnitario: item.selectedPtp.precio
+      })),
+      total,
+      usuario: user?.username,
+      resumen: cartItems.map(item => `${item.cantidad} x ${item.nombre}`).join(', ')
+    };
     try {
       await api.post('/api/registros', {
-        codMedioPago: selectedMedioPago,
-        detalles: cartItems.map(item => ({
-          idProductoTipoPresentacion: item.selectedPtp.id,
-          cantidadRegistroPedido: item.cantidad
-        }))
+        idCliente: venta.idCliente,
+        codMedioPago: venta.codMedioPago,
+        detalles: venta.detalles.map(({ idProductoTipoPresentacion, cantidadRegistroPedido }) =>
+          ({ idProductoTipoPresentacion, cantidadRegistroPedido }))
       });
       clearCart();
       setIsCheckoutModalOpen(false);
     } catch (error) {
-      alert('Error al registrar la venta: ' + error.message);
+      if (error.sinConexion) {
+        encolarVenta(venta);
+        clearCart();
+        setIsCheckoutModalOpen(false);
+        setAviso('Sin conexión: la venta quedó guardada en este equipo y se envía sola cuando vuelva internet.');
+        setTimeout(() => setAviso(''), 6000);
+      } else {
+        alert('Error al registrar la venta: ' + error.message);
+      }
+    } finally {
+      cobrando.current = false;
     }
   };
 
@@ -172,7 +217,18 @@ const POS = () => {
     });
 
   return (
-    <div className="flex flex-col md:flex-row h-full p-2 md:p-4 gap-3 md:gap-4 overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden">
+    {catalogoGuardadoEn && (
+      <div role="status" className="mx-2 md:mx-4 mt-2 px-3 py-2 rounded-lg border border-amber-700/50 bg-amber-950/40 text-amber-200 text-xs">
+        Sin conexión: se muestran los productos y precios guardados en este equipo ({new Date(catalogoGuardadoEn).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}).
+      </div>
+    )}
+    {aviso && (
+      <div role="status" className="fixed left-1/2 -translate-x-1/2 bottom-20 md:bottom-6 z-50 w-[calc(100%-2rem)] max-w-md px-4 py-3 rounded-lg border border-amber-700/60 bg-slate-900 text-amber-100 text-sm shadow-lg">
+        {aviso}
+      </div>
+    )}
+    <div className="flex flex-col md:flex-row flex-1 min-h-0 p-2 md:p-4 gap-3 md:gap-4 overflow-hidden">
 
       {/* CARRITO — en mobile es desplegable (colapsado por defecto) para no comerse la pantalla */}
       <div className={`order-2 md:order-1 w-full md:w-1/3 flex flex-col glass-panel rounded-2xl overflow-hidden shadow-lg relative border border-slate-700/50 md:max-h-none shrink-0 md:shrink ${cartExpanded ? 'max-h-[70vh]' : ''} md:max-h-none`}>
@@ -447,6 +503,7 @@ const POS = () => {
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 };

@@ -54,59 +54,48 @@ const handleResponse = async (response) => {
 
   if (!response.ok) {
     const errorMsg = data?.detail || 'Ha ocurrido un error en la solicitud';
-    throw new Error(errorMsg);
+    const error = new Error(errorMsg);
+    error.status = response.status;
+    // 5xx: el servidor está caído o no puede trabajar (túnel, base, etc.).
+    error.sinConexion = response.status >= 500;
+    throw error;
   }
 
   return data;
 };
 
-export const api = {
-  get: async (endpoint) => {
-    const url = `${getApiUrl()}${endpoint}`;
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: getHeaders()
-    });
-    return handleResponse(response);
-  },
+// Sin respuesta en este tiempo se trata como "sin conexión" (no deja el cobro colgado).
+const TIEMPO_MAXIMO_MS = 15000;
 
-  post: async (endpoint, body) => {
-    const url = `${getApiUrl()}${endpoint}`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify(body)
-    });
-    return handleResponse(response);
-  },
-
-  put: async (endpoint, body) => {
-    const url = `${getApiUrl()}${endpoint}`;
-    const response = await fetch(url, {
-      method: 'PUT',
-      headers: getHeaders(),
-      body: JSON.stringify(body)
-    });
-    return handleResponse(response);
-  },
-
-  delete: async (endpoint) => {
-    const url = `${getApiUrl()}${endpoint}`;
-    const response = await fetch(url, {
-      method: 'DELETE',
-      headers: getHeaders()
-    });
-    return handleResponse(response);
-  },
-
-  // Método especial para enviar formularios con subidas de archivos (multipart/form-data)
-  upload: async (endpoint, formData, isPut = false) => {
-    const url = `${getApiUrl()}${endpoint}`;
-    const response = await fetch(url, {
-      method: isPut ? 'PUT' : 'POST',
-      headers: getHeaders(true), // Indica que no añada Content-Type para que el navegador lo ponga con el boundary correcto
-      body: formData
-    });
-    return handleResponse(response);
+// fetch que convierte los fallos de red (sin internet, servidor apagado,
+// demora excesiva) en un error con sinConexion = true.
+const pedir = async (endpoint, opciones) => {
+  const control = new AbortController();
+  const reloj = setTimeout(() => control.abort(), TIEMPO_MAXIMO_MS);
+  let response;
+  try {
+    response = await fetch(`${getApiUrl()}${endpoint}`, { ...opciones, signal: control.signal });
+  } catch (e) {
+    const error = new Error('Sin conexión con el servidor');
+    error.sinConexion = true;
+    throw error;
+  } finally {
+    clearTimeout(reloj);
   }
+  return handleResponse(response);
+};
+
+export const api = {
+  get: (endpoint) => pedir(endpoint, { method: 'GET', headers: getHeaders() }),
+
+  post: (endpoint, body) => pedir(endpoint, { method: 'POST', headers: getHeaders(), body: JSON.stringify(body) }),
+
+  put: (endpoint, body) => pedir(endpoint, { method: 'PUT', headers: getHeaders(), body: JSON.stringify(body) }),
+
+  delete: (endpoint) => pedir(endpoint, { method: 'DELETE', headers: getHeaders() }),
+
+  // Método especial para enviar formularios con subidas de archivos (multipart/form-data).
+  // Sin Content-Type para que el navegador lo ponga con el boundary correcto.
+  upload: (endpoint, formData, isPut = false) =>
+    pedir(endpoint, { method: isPut ? 'PUT' : 'POST', headers: getHeaders(true), body: formData })
 };
