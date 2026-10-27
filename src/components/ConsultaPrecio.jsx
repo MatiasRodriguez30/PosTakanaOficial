@@ -4,6 +4,7 @@ import { BarcodeScanner, BarcodeFormat } from '@capacitor-mlkit/barcode-scanning
 import { api, getApiUrl } from '../api';
 import { Search, Camera, Package, Tag } from 'lucide-react';
 import BarcodeScannerModal from './BarcodeScannerModal';
+import { useBusquedaInteligente, ordenarPorBusqueda, AvisoBusqueda } from '../busqueda';
 
 const NATIVE_SCAN_FORMATS = [
   BarcodeFormat.Ean13, BarcodeFormat.Ean8, BarcodeFormat.UpcA, BarcodeFormat.UpcE,
@@ -20,6 +21,7 @@ export default function ConsultaPrecio() {
   const [search, setSearch] = useState('');
   const [scannerOpen, setScannerOpen] = useState(false);
   const [highlightSku, setHighlightSku] = useState(null); // sku escaneado, para resaltar esa presentación puntual
+  const busqueda = useBusquedaInteligente(search);
 
   useEffect(() => {
     api.get('/api/productos').then(setProductos).catch(console.error).finally(() => setLoading(false));
@@ -45,10 +47,12 @@ export default function ConsultaPrecio() {
   };
 
   const term = search.trim().toLowerCase();
-  const resultados = term === '' ? [] : productos.filter(p =>
-    p.nombre.toLowerCase().includes(term) ||
-    (p.presentaciones || []).some(pp => pp.sku && pp.sku.toLowerCase().includes(term))
-  );
+  const resultados = term === '' ? []
+    : busqueda && busqueda.ids.length > 0 ? ordenarPorBusqueda(productos, busqueda)
+    : productos.filter(p =>
+      p.nombre.toLowerCase().includes(term) ||
+      (p.presentaciones || []).some(pp => pp.sku && pp.sku.toLowerCase().includes(term))
+    );
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -77,6 +81,7 @@ export default function ConsultaPrecio() {
             <Camera size={22} />
           </button>
         </div>
+        <div className="mt-2"><AvisoBusqueda resultado={busqueda} /></div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 pt-0">

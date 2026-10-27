@@ -4,6 +4,7 @@ import { BarcodeScanner, BarcodeFormat } from '@capacitor-mlkit/barcode-scanning
 import { CartContext } from '../context/CartContext';
 import { api, getApiUrl } from '../api';
 import BarcodeScannerModal from './BarcodeScannerModal';
+import { useBusquedaInteligente, ordenarPorBusqueda, AvisoBusqueda } from '../busqueda';
 import { Search, Plus, Minus, Trash2, CreditCard, ShoppingCart, Tag, CheckCircle, Package, X, ChevronRight, ChevronDown, ChevronUp, Camera } from 'lucide-react';
 
 // Códigos de barras que puede tener un producto de este POS (coincide con lo
@@ -24,6 +25,7 @@ const POS = () => {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const busqueda = useBusquedaInteligente(searchTerm);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
@@ -160,11 +162,14 @@ const POS = () => {
     }
   };
 
-  const filteredProducts = productos.filter(p => {
-    const matchSearch = p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || (p.presentaciones || []).some(pp => pp.sku && pp.sku.includes(searchTerm));
-    const matchCat = selectedCategory ? (p.categorias_asociadas || []).some(c => c.codCategoria === selectedCategory) : true;
-    return matchSearch && matchCat;
-  });
+  const matchCat = p => selectedCategory ? (p.categorias_asociadas || []).some(c => c.codCategoria === selectedCategory) : true;
+  // Con respuesta de la búsqueda del servidor se usa su orden; si no, el filtro local de siempre.
+  const filteredProducts = busqueda && busqueda.ids.length > 0
+    ? ordenarPorBusqueda(productos, busqueda).filter(matchCat)
+    : productos.filter(p => {
+      const matchSearch = p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || (p.presentaciones || []).some(pp => pp.sku && pp.sku.includes(searchTerm));
+      return matchSearch && matchCat(p);
+    });
 
   return (
     <div className="flex flex-col md:flex-row h-full p-2 md:p-4 gap-3 md:gap-4 overflow-hidden">
@@ -278,6 +283,7 @@ const POS = () => {
               <Camera size={22} />
             </button>
           </div>
+          <AvisoBusqueda resultado={busqueda} />
 
           <div className="flex gap-2 overflow-x-auto pb-1">
             <button onClick={() => setSelectedCategory(null)}
