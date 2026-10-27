@@ -26,7 +26,7 @@ export default function Productos() {
   const [previewImg, setPreviewImg] = useState(null);
   const [scanningIdx, setScanningIdx] = useState(null); // índice de presentación siendo escaneada (modal web)
 
-  const emptyForm = { nombre: '', categorias: [], presentacionesPrecios: [], imagen: null };
+  const emptyForm = { nombre: '', descripcion: '', categorias: [], presentacionesPrecios: [], imagen: null };
   const [form, setForm] = useState(emptyForm);
 
   useEffect(() => { fetchAll(); }, []);
@@ -58,6 +58,7 @@ export default function Productos() {
     setEditingProduct(prod);
     setForm({
       nombre: prod.nombre,
+      descripcion: prod.descripcion || '',
       categorias: (prod.categorias_asociadas || []).map(c => c.codCategoria),
       presentacionesPrecios: (prod.presentaciones || []).map(p => ({
         codTipoPresentacion: p.codTipoPresentacion,
@@ -136,6 +137,7 @@ export default function Productos() {
     try {
       const fd = new FormData();
       fd.append('nombre', form.nombre.trim());
+      fd.append('descripcion', form.descripcion.trim());
       fd.append('categorias', form.categorias.join(','));
       fd.append('presentaciones', JSON.stringify(
         form.presentacionesPrecios.map(p => ({
@@ -254,6 +256,13 @@ export default function Productos() {
               <div>
                 <label className="text-xs text-slate-400 mb-1 block">Nombre *</label>
                 <input type="text" value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} className={inputCls} />
+              </div>
+
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Descripción (para la búsqueda inteligente)</label>
+                <textarea rows={2} value={form.descripcion} onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))}
+                  placeholder="Para qué sirve y para qué animal, con las palabras que usaría un cliente. Ej: alimento para gatos castrados"
+                  className={inputCls} />
               </div>
 
               {/* Presentaciones + Precios */}
