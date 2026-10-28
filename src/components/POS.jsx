@@ -85,12 +85,29 @@ const POS = () => {
     const handleKeyDown = (e) => {
       if (e.target.tagName === 'INPUT' && e.target.id !== 'search-input') return;
       const now = Date.now();
+      // Enter en el buscador con un código exacto = escaneo, aunque el lector
+      // (p. ej. uno Bluetooth) escriba más lento de lo que detecta el buffer.
+      if (e.key === 'Enter' && e.target.id === 'search-input') {
+        const codigo = e.target.value.trim();
+        const esCodigo = codigo !== '' && productos.some(p => (p.presentaciones || []).some(pp => pp.sku === codigo));
+        if (esCodigo) {
+          handleBarcodeScan(codigo);
+          barcodeBuffer.current = '';
+          e.preventDefault();
+          setSearchTerm('');
+          lastKeyTime.current = now;
+          return;
+        }
+      }
       if (now - lastKeyTime.current > 50) barcodeBuffer.current = '';
       if (e.key === 'Enter') {
         if (barcodeBuffer.current.length > 2) {
           handleBarcodeScan(barcodeBuffer.current);
           barcodeBuffer.current = '';
           e.preventDefault();
+          // El lector también escribió el código en el buscador: se limpia, así
+          // el próximo escaneo no se suma al anterior.
+          if (e.target.id === 'search-input') setSearchTerm('');
         } else if (isCheckoutModalOpen) {
           handleConfirmSale();
         } else if (cartItems.length > 0 && document.activeElement.tagName !== 'INPUT') {

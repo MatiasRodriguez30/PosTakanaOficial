@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { BarcodeScanner, BarcodeFormat } from '@capacitor-mlkit/barcode-scanning';
 import { api, getApiUrl } from '../api';
@@ -55,6 +55,28 @@ export default function ConsultaPrecio() {
     }
   };
 
+  // Un código por consulta: el lector USB/Bluetooth escribe el código y manda
+  // Enter. Con el Enter se selecciona todo, así el próximo escaneo (o lo que se
+  // escriba) reemplaza al anterior en vez de sumarse. Si el lector no manda
+  // Enter, igual: con un código completo y casi un segundo sin teclear, la
+  // próxima tecla también reemplaza.
+  const ultimaTecla = useRef(0);
+  const esCodigoExacto = (texto) => {
+    const codigo = texto.trim();
+    return codigo !== '' && productos.some(p => (p.presentaciones || []).some(pp => pp.sku === codigo));
+  };
+  const alTeclear = (e) => {
+    const ahora = Date.now();
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (esCodigoExacto(search)) setHighlightSku(search.trim());
+      e.target.select();
+    } else if (e.key.length === 1 && ahora - ultimaTecla.current > 800 && esCodigoExacto(search)) {
+      e.target.select();
+    }
+    ultimaTecla.current = ahora;
+  };
+
   const term = search.trim().toLowerCase();
   const resultados = term === '' ? []
     : busqueda && busqueda.ids.length > 0 ? ordenarPorBusqueda(productos, busqueda)
@@ -82,6 +104,7 @@ export default function ConsultaPrecio() {
               placeholder="Nombre del producto..."
               value={search}
               onChange={e => { setSearch(e.target.value); setHighlightSku(null); }}
+              onKeyDown={alTeclear}
               className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-900/60 border border-slate-700 text-white text-lg focus:outline-none focus:border-indigo-500 transition-colors"
             />
           </div>
