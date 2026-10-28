@@ -157,6 +157,41 @@ export default function Productos() {
     finally { setSaving(false); }
   };
 
+  // Escanear con el lector (USB o Bluetooth, escribe el código y manda Enter)
+  // busca el producto sin tener que tocar el buscador. Con el formulario
+  // abierto no hace nada: ahí manda el campo del código de barras.
+  const buscadorRef = useRef(null);
+  const teclasEscaneo = useRef({ texto: '', ultima: 0 });
+  useEffect(() => {
+    if (showModal || scanningIdx !== null) return undefined;
+    const alTeclear = (e) => {
+      const destino = e.target;
+      if (destino === buscadorRef.current) {
+        // Un código por consulta: con el Enter se selecciona todo y el próximo escaneo lo reemplaza.
+        if (e.key === 'Enter') { e.preventDefault(); destino.select(); }
+        return;
+      }
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(destino.tagName) || destino.isContentEditable) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const ahora = Date.now();
+      const escaneo = teclasEscaneo.current;
+      if (ahora - escaneo.ultima > 1500) escaneo.texto = '';
+      escaneo.ultima = ahora;
+      if (e.key === 'Enter') {
+        if (escaneo.texto.trim().length >= 3) {
+          e.preventDefault();
+          setSearch(escaneo.texto.trim());
+          requestAnimationFrame(() => { buscadorRef.current?.focus(); buscadorRef.current?.select(); });
+        }
+        escaneo.texto = '';
+      } else if (e.key.length === 1) {
+        escaneo.texto += e.key;
+      }
+    };
+    window.addEventListener('keydown', alTeclear);
+    return () => window.removeEventListener('keydown', alTeclear);
+  }, [showModal, scanningIdx]);
+
   const filtered = productos.filter(p =>
     p.nombre.toLowerCase().includes(search.toLowerCase()) ||
     (p.presentaciones || []).some(pp => (pp.sku || '').toLowerCase().includes(search.toLowerCase()))
@@ -181,7 +216,7 @@ export default function Productos() {
       <div className="p-6 flex-1 overflow-y-auto">
         <div className="relative mb-6">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input type="text" placeholder="Buscar por nombre o SKU..." value={search} onChange={e => setSearch(e.target.value)}
+          <input ref={buscadorRef} type="text" placeholder="Buscar por nombre o código, o escaneá con el lector..." value={search} onChange={e => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-slate-800/60 border border-slate-700/60 text-slate-200 text-sm focus:outline-none focus:border-indigo-500/60 transition-colors" />
         </div>
 
