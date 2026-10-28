@@ -74,6 +74,7 @@ export default function Catalogos() {
   const [showPresModal, setShowPresModal] = useState(false);
   const [editingPres, setEditingPres] = useState(null);
   const [presNombre, setPresNombre] = useState('');
+  const [presInterno, setPresInterno] = useState(false);
   const [presError, setPresError] = useState('');
   const [savingPres, setSavingPres] = useState(false);
 
@@ -112,8 +113,8 @@ export default function Catalogos() {
 
   // ===== PRESENTACIONES =====
   const fetchPresentaciones = async () => { setLoadingPres(true); try { setPresentaciones(await api.get('/api/presentaciones')); } finally { setLoadingPres(false); } };
-  const openCreatePres = () => { setEditingPres(null); setPresNombre(''); setPresError(''); setShowPresModal(true); };
-  const openEditPres = (p) => { setEditingPres(p); setPresNombre(p.nombreTipoPresentacion); setPresError(''); setShowPresModal(true); };
+  const openCreatePres = () => { setEditingPres(null); setPresNombre(''); setPresInterno(false); setPresError(''); setShowPresModal(true); };
+  const openEditPres = (p) => { setEditingPres(p); setPresNombre(p.nombreTipoPresentacion); setPresInterno(!!p.requiereCodigoInterno); setPresError(''); setShowPresModal(true); };
   const deletePres = async (p) => {
     if (!window.confirm(`¿Dar de baja la presentación "${p.nombreTipoPresentacion}"?`)) return;
     try { await api.delete(`/api/presentaciones/${p.codTipoPresentacion}`); await fetchPresentaciones(); } catch (e) { alert(e.message); }
@@ -123,8 +124,8 @@ export default function Catalogos() {
     if (!presNombre.trim()) { setPresError('El nombre es obligatorio.'); return; }
     setSavingPres(true);
     try {
-      if (editingPres) await api.put(`/api/presentaciones/${editingPres.codTipoPresentacion}`, { nombreTipoPresentacion: presNombre.trim() });
-      else await api.post('/api/presentaciones', { nombreTipoPresentacion: presNombre.trim() });
+      if (editingPres) await api.put(`/api/presentaciones/${editingPres.codTipoPresentacion}`, { nombreTipoPresentacion: presNombre.trim(), requiereCodigoInterno: presInterno });
+      else await api.post('/api/presentaciones', { nombreTipoPresentacion: presNombre.trim(), requiereCodigoInterno: presInterno });
       setShowPresModal(false); await fetchPresentaciones();
     } catch (e) { setPresError(e.message); } finally { setSavingPres(false); }
   };
@@ -193,7 +194,14 @@ export default function Catalogos() {
           title="Tipos de Presentación" icon={Tag}
           items={presentaciones} loading={loadingPres}
           onCreate={openCreatePres} onEdit={openEditPres} onDelete={deletePres}
-          renderItem={p => <span className="text-slate-200 text-sm">{p.nombreTipoPresentacion}</span>}
+          renderItem={p => (
+            <div className="flex items-center gap-2">
+              <span className="text-slate-200 text-sm">{p.nombreTipoPresentacion}</span>
+              {p.requiereCodigoInterno && (
+                <span className="px-1.5 py-0.5 rounded text-xs bg-slate-700/60 border border-slate-600/60 text-slate-300">Código interno</span>
+              )}
+            </div>
+          )}
           showModal={showPresModal} setShowModal={setShowPresModal}
           error={presError} saving={savingPres}
           modalContent={
@@ -202,6 +210,13 @@ export default function Catalogos() {
                 <label className="text-xs text-slate-400 mb-1 block">Nombre de la Presentación (ej: 1Kg, 2Kg...)</label>
                 <input type="text" value={presNombre} onChange={e => setPresNombre(e.target.value)} autoFocus className={inputClass} />
               </div>
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input type="checkbox" checked={presInterno} onChange={e => setPresInterno(e.target.checked)} className="mt-0.5 w-4 h-4 accent-indigo-600" />
+                <span className="text-sm text-slate-300">
+                  Requiere código interno
+                  <span className="block text-xs text-slate-500">Los productos con esta presentación que no tengan código de barras reciben uno interno, para imprimir su etiqueta desde Productos.</span>
+                </span>
+              </label>
               {saveBtn(savingPres, editingPres ? 'Actualizar' : 'Crear')}
             </form>
           }
