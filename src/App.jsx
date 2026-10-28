@@ -8,6 +8,8 @@ import Productos from './components/Productos';
 import Catalogos from './components/Catalogos';
 import ConsultaPrecio from './components/ConsultaPrecio';
 import ConsultaIA from './components/ConsultaIA';
+import EstadoConexion from './components/EstadoConexion';
+import { leerVentasPendientes } from './sinConexion';
 import { Store, Package, Tag, History, LogOut, User, Search, Bot } from 'lucide-react';
 
 const MainLayout = () => {
@@ -36,6 +38,17 @@ const MainLayout = () => {
 
   const allowedItems = menuItems.filter(item => item.roles.includes(user.rol));
 
+  // Las ventas sin enviar quedan guardadas en el equipo y se envían cuando este
+  // usuario vuelva a entrar: avisar antes de cerrar sesión.
+  const salir = () => {
+    const pendientes = leerVentasPendientes().filter(v => v.usuario === user.username).length;
+    if (pendientes > 0 && !window.confirm(
+      `Hay ${pendientes === 1 ? '1 venta' : `${pendientes} ventas`} sin enviar. Quedan guardadas en este equipo ` +
+      'y se envían cuando vuelvas a entrar con este usuario y haya conexión.\n\n¿Cerrar sesión igual?'
+    )) return;
+    logout();
+  };
+
   return (
     <div className="flex flex-col md:flex-row h-screen bg-[#0b0f19] text-slate-100 overflow-hidden">
       {/* Barra superior (solo mobile) */}
@@ -50,7 +63,7 @@ const MainLayout = () => {
           </div>
         </div>
         <button
-          onClick={logout}
+          onClick={salir}
           className="p-2 rounded-lg text-red-400 hover:bg-red-950/30 border border-transparent hover:border-red-900/50"
         >
           <LogOut size={18} />
@@ -94,7 +107,7 @@ const MainLayout = () => {
 
         <div className="p-3 border-t border-slate-700/50">
           <button
-            onClick={logout}
+            onClick={salir}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm font-medium text-red-400 hover:bg-red-950/30 border border-transparent hover:border-red-900/50"
           >
             <LogOut size={17} />
@@ -105,6 +118,7 @@ const MainLayout = () => {
 
       {/* Content */}
       <main className="flex-1 flex flex-col relative z-10 overflow-hidden min-h-0">
+        <EstadoConexion />
         {activeTab === 'pos'        && <POS />}
         {activeTab === 'consulta'   && <ConsultaPrecio />}
         {activeTab === 'historial'  && <Historial />}
