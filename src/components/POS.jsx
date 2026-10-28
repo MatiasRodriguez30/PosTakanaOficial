@@ -6,6 +6,7 @@ import { AuthContext } from '../context/AuthContext';
 import { api, getApiUrl } from '../api';
 import { guardarCatalogo, leerCatalogo, encolarVenta, nuevoIdVenta } from '../sinConexion';
 import BarcodeScannerModal from './BarcodeScannerModal';
+import CantidadTicket from './CantidadTicket';
 import { useBusquedaInteligente, ordenarPorBusqueda, AvisoBusqueda } from '../busqueda';
 import { Search, Plus, Minus, Trash2, CreditCard, ShoppingCart, Tag, CheckCircle, Package, X, ChevronRight, ChevronDown, ChevronUp, Camera } from 'lucide-react';
 
@@ -198,7 +199,7 @@ const POS = () => {
       })),
       total,
       usuario: user?.username,
-      resumen: cartItems.map(item => `${item.cantidad} x ${item.nombre}`).join(', ')
+      resumen: cartItems.map(item => `${Number(item.cantidad.toFixed(3))} x ${item.nombre}`).join(', ')
     };
     try {
       await api.post('/api/registros', {
@@ -293,28 +294,13 @@ const POS = () => {
                       </button>
                     </div>
                   </div>
-                  {/* Cantidad editable — admite decimales (0.5kg, 2.5kg, etc.) */}
-                  <div className="flex items-center gap-2 mt-2">
-                    <button type="button" onClick={() => updateQuantity(key, Math.max(0.01, Math.round((item.cantidad - 0.5) * 100) / 100))}
-                      className="p-1.5 rounded-md bg-slate-700/60 text-slate-300 hover:bg-slate-700 transition-colors">
-                      <Minus size={12} />
-                    </button>
-                    <input
-                      type="text" inputMode="decimal" value={item.cantidad}
-                      onChange={e => {
-                        // Admite coma o punto como separador decimal (el teclado numérico
-                        // de Android en español suele mandar coma).
-                        const raw = e.target.value.replace(',', '.');
-                        const v = parseFloat(raw);
-                        if (!isNaN(v) && v > 0) updateQuantity(key, v);
-                      }}
-                      className="w-16 text-center py-1 rounded-md bg-slate-900/60 border border-slate-700/60 text-slate-200 text-sm focus:outline-none focus:border-indigo-500/60"
-                    />
-                    <button type="button" onClick={() => updateQuantity(key, Math.round((item.cantidad + 0.5) * 100) / 100)}
-                      className="p-1.5 rounded-md bg-slate-700/60 text-slate-300 hover:bg-slate-700 transition-colors">
-                      <Plus size={12} />
-                    </button>
-                  </div>
+                  {/* Cantidad editable — admite decimales (0.5kg, 2.5kg, etc.) o por importe ($500) */}
+                  <CantidadTicket
+                    cantidad={item.cantidad}
+                    precio={item.selectedPtp?.precio}
+                    presentacion={item.selectedPtp?.tipo_presentacion?.nombreTipoPresentacion}
+                    onCambiar={v => updateQuantity(key, v)}
+                  />
                 </div>
               );
             })
