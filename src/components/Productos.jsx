@@ -5,6 +5,7 @@ import { api } from '../api';
 import { Package, Plus, Search, Edit2, Trash2, X, Upload, Tag, Trash, ScanLine } from 'lucide-react';
 import { getApiUrl } from '../api';
 import BarcodeScannerModal from './BarcodeScannerModal';
+import CampoCodigoBarras from './CampoCodigoBarras';
 
 const NATIVE_SCAN_FORMATS = [
   BarcodeFormat.Ean13, BarcodeFormat.Ean8, BarcodeFormat.UpcA, BarcodeFormat.UpcE,
@@ -290,9 +291,7 @@ export default function Productos() {
                             </button>
                           </div>
                           <div className="flex items-center gap-2">
-                            <input type="text" placeholder="Código de barras de esta presentación (opcional)" value={pp.sku || ''}
-                              onChange={e => updatePresentacion(idx, 'sku', e.target.value)}
-                              className="flex-1 px-2 py-1.5 rounded-lg bg-slate-800/60 border border-slate-700/60 text-slate-200 text-xs font-mono focus:outline-none focus:border-indigo-500/60" />
+                            <CampoCodigoBarras valor={pp.sku || ''} onCambiar={codigo => updatePresentacion(idx, 'sku', codigo)} />
                             <button type="button" onClick={() => handleScanSku(idx)} title="Escanear código de barras"
                               className="shrink-0 p-1.5 rounded-lg bg-indigo-600/20 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-600/30 transition-colors">
                               <ScanLine size={14} />
