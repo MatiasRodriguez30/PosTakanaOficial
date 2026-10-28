@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { BarcodeScanner, BarcodeFormat } from '@capacitor-mlkit/barcode-scanning';
 import { api } from '../api';
-import { Package, Plus, Search, Edit2, Trash2, X, Upload, Tag, Trash, ScanLine } from 'lucide-react';
+import { Package, Plus, Search, Edit2, Trash2, X, Upload, Tag, Trash, ScanLine, Printer } from 'lucide-react';
 import { getApiUrl } from '../api';
 import BarcodeScannerModal from './BarcodeScannerModal';
 import CampoCodigoBarras from './CampoCodigoBarras';
@@ -168,7 +168,7 @@ export default function Productos() {
       const destino = e.target;
       if (destino === buscadorRef.current) {
         // Un código por consulta: con el Enter se selecciona todo y el próximo escaneo lo reemplaza.
-        if (e.key === 'Enter') { e.preventDefault(); destino.select(); }
+        if (e.key === 'Enter') { e.preventDefault(); destino.select(); abrirPorCodigo(destino.value.trim()); }
         return;
       }
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(destino.tagName) || destino.isContentEditable) return;
@@ -180,8 +180,11 @@ export default function Productos() {
       if (e.key === 'Enter') {
         if (escaneo.texto.trim().length >= 3) {
           e.preventDefault();
-          setSearch(escaneo.texto.trim());
-          requestAnimationFrame(() => { buscadorRef.current?.focus(); buscadorRef.current?.select(); });
+          const codigo = escaneo.texto.trim();
+          setSearch(codigo);
+          if (!abrirPorCodigo(codigo)) {
+            requestAnimationFrame(() => { buscadorRef.current?.focus(); buscadorRef.current?.select(); });
+          }
         }
         escaneo.texto = '';
       } else if (e.key.length === 1) {
@@ -190,7 +193,48 @@ export default function Productos() {
     };
     window.addEventListener('keydown', alTeclear);
     return () => window.removeEventListener('keydown', alTeclear);
-  }, [showModal, scanningIdx]);
+  }, [showModal, scanningIdx, productos]);
+
+  // Si el código escaneado es de un solo producto, abre su edición con el
+  // precio de esa presentación listo para cambiar (actualizar precios
+  // escaneando). Devuelve true si lo abrió.
+  const abrirPorCodigo = (codigo) => {
+    if (!codigo) return false;
+    const coincidencias = productos.filter(p => (p.presentaciones || []).some(pp => pp.sku === codigo));
+    if (coincidencias.length !== 1) return false;
+    openEdit(coincidencias[0]);
+    setTimeout(() => {
+      const precio = document.querySelector(`input[data-sku="${CSS.escape(codigo)}"]`);
+      if (precio) { precio.focus(); precio.select(); }
+    }, 50);
+    return true;
+  };
+
+  // PDF con las etiquetas de todos los códigos internos (A4 horizontal).
+  const [generandoEtiquetas, setGenerandoEtiquetas] = useState(false);
+  const descargarEtiquetas = async () => {
+    setGenerandoEtiquetas(true);
+    try {
+      const token = localStorage.getItem('TAKANA_TOKEN');
+      const respuesta = await fetch(`${getApiUrl()}/api/productos/etiquetas-internas.pdf`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      if (!respuesta.ok) throw new Error(`No se pudo generar el PDF (HTTP ${respuesta.status})`);
+      const url = URL.createObjectURL(await respuesta.blob());
+      const enlace = document.createElement('a');
+      enlace.href = url;
+      enlace.download = 'etiquetas-codigos-internos.pdf';
+      document.body.appendChild(enlace);
+      enlace.click();
+      enlace.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+      fetchAll();  // pudieron asignarse códigos nuevos
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setGenerandoEtiquetas(false);
+    }
+  };
 
   const filtered = productos.filter(p =>
     p.nombre.toLowerCase().includes(search.toLowerCase()) ||
@@ -208,9 +252,17 @@ export default function Productos() {
           </h1>
           <p className="text-slate-400 text-sm mt-1">{productos.length} productos registrados</p>
         </div>
-        <button onClick={openCreate} className="btn-premium flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-medium">
-          <Plus size={16} /> Nuevo Producto
-        </button>
+        <div className="flex items-center gap-2">
+          {/* En la app Android el WebView no descarga archivos: el PDF se imprime desde la PC (web). */}
+          {!Capacitor.isNativePlatform() && <button onClick={descargarEtiquetas} disabled={generandoEtiquetas}
+            title="PDF para imprimir las etiquetas de los productos con código interno"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-600/70 text-slate-200 text-sm font-medium hover:bg-slate-800/60 disabled:opacity-50 transition-colors">
+            <Printer size={16} /> {generandoEtiquetas ? 'Generando…' : 'Etiquetas (PDF)'}
+          </button>}
+          <button onClick={openCreate} className="btn-premium flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-medium">
+            <Plus size={16} /> Nuevo Producto
+          </button>
+        </div>
       </div>
 
       <div className="p-6 flex-1 overflow-y-auto">
@@ -317,7 +369,7 @@ export default function Productos() {
                             </select>
                             <div className="flex items-center gap-1 bg-slate-800/60 border border-slate-700/60 rounded-lg px-2">
                               <span className="text-slate-500 text-sm">$</span>
-                              <input type="number" step="0.01" min="0" value={pp.precio}
+                              <input type="number" step="0.01" min="0" value={pp.precio} data-sku={pp.sku || ''}
                                 onChange={e => updatePresentacion(idx, 'precio', e.target.value)}
                                 className="w-24 py-1.5 bg-transparent text-slate-200 text-sm focus:outline-none" />
                             </div>
