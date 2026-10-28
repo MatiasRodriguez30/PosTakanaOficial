@@ -151,7 +151,7 @@ export default function Historial() {
                                   ? `${d.producto_presentacion.producto?.nombre || 'Producto eliminado'} · ${d.producto_presentacion.tipo_presentacion?.nombreTipoPresentacion || ''}`
                                   : 'Producto eliminado'}
                               </td>
-                              <td className="py-2 text-center text-slate-400">{d.cantidadRegistroPedido}</td>
+                              <td className="py-2 text-center text-slate-400 tabular-nums">{Number(Number(d.cantidadRegistroPedido).toFixed(3))}</td>
                               <td className="py-2 text-right text-slate-400">${d.precioUnitarioPedidoProducto?.toFixed(2)}</td>
                               <td className="py-2 text-right text-emerald-400 font-medium">${d.subTotalPedidoProducto?.toFixed(2)}</td>
                             </tr>
