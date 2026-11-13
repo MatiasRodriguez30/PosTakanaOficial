@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
+import { reproducirBeepEscaneo } from '../formato';
 
 // Código de barras de una presentación, pensado para el lector USB o Bluetooth
 // (funcionan como un teclado: "escriben" el código y mandan Enter).
@@ -9,10 +10,17 @@ export default function CampoCodigoBarras({ valor, onCambiar }) {
   const [esperando, setEsperando] = useState(false);
   const [texto, setTexto] = useState('');
 
-  const empezar = () => { setTexto(''); setEsperando(true); };
+  const empezar = () => {
+    setTexto('');
+    setEsperando(true);
+  };
+
   const terminar = (confirmar) => {
     const codigo = texto.trim();
-    if (confirmar && codigo) onCambiar(codigo);
+    if (confirmar && codigo) {
+      reproducirBeepEscaneo(true);
+      onCambiar(codigo);
+    }
     setEsperando(false);
     setTexto('');
   };
@@ -23,16 +31,22 @@ export default function CampoCodigoBarras({ valor, onCambiar }) {
         type="text"
         autoFocus
         value={texto}
-        onChange={e => setTexto(e.target.value)}
-        onKeyDown={e => {
+        onChange={(e) => setTexto(e.target.value)}
+        onKeyDown={(e) => {
           // Enter (o Tab, según cómo esté configurado el lector) confirma; nunca envía el formulario.
-          if (e.key === 'Enter' || (e.key === 'Tab' && texto.trim())) { e.preventDefault(); terminar(true); }
-          else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); terminar(false); }
+          if (e.key === 'Enter' || (e.key === 'Tab' && texto.trim())) {
+            e.preventDefault();
+            terminar(true);
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+            terminar(false);
+          }
         }}
         onBlur={() => terminar(true)}
-        placeholder="Escaneá con el lector… (o escribilo y Enter · Esc cancela)"
+        placeholder="Escaneá con el lector… (Enter confirma · Esc cancela)"
         aria-label="Esperando el escaneo del código de barras"
-        className="flex-1 min-w-0 px-2 py-1.5 rounded-lg bg-indigo-950/40 border border-indigo-500/70 text-slate-100 text-xs font-mono placeholder:text-indigo-300/70 focus:outline-none animate-pulse focus:animate-none"
+        className="flex-1 min-w-0 px-2.5 py-2 rounded-lg bg-brand-50 dark:bg-brand-950/60 border-2 border-brand-700 dark:border-brand-400 text-slate-900 dark:text-slate-100 text-xs font-mono placeholder:text-brand-800/70 dark:placeholder:text-brand-300/70 focus:outline-none"
       />
     );
   }
@@ -43,11 +57,15 @@ export default function CampoCodigoBarras({ valor, onCambiar }) {
         type="button"
         onClick={empezar}
         title="Tocá y escaneá con el lector para cambiar el código"
-        className="flex-1 min-w-0 text-left px-2 py-1.5 rounded-lg bg-slate-800/60 border border-slate-700/60 hover:border-indigo-500/60 text-xs font-mono truncate transition-colors"
+        className="flex-1 min-w-0 min-h-[38px] text-left px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 hover:border-brand-700 dark:hover:border-brand-400 text-xs font-mono truncate transition-colors"
       >
-        {valor
-          ? <span className="text-slate-200">{valor}</span>
-          : <span className="text-slate-500 font-sans">Sin código · tocá y escaneá con el lector</span>}
+        {valor ? (
+          <span className="text-slate-900 dark:text-slate-100">{valor}</span>
+        ) : (
+          <span className="text-slate-500 dark:text-slate-400 font-sans">
+            Sin código · tocá y escaneá con el lector
+          </span>
+        )}
       </button>
       {valor && (
         <button
@@ -55,9 +73,9 @@ export default function CampoCodigoBarras({ valor, onCambiar }) {
           onClick={() => onCambiar('')}
           title="Quitar el código de barras"
           aria-label="Quitar el código de barras"
-          className="shrink-0 p-1.5 rounded-lg text-slate-500 hover:text-red-400 transition-colors"
+          className="shrink-0 p-2 rounded-lg text-slate-500 hover:text-red-700 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
         >
-          <X size={14} />
+          <X size={15} />
         </button>
       )}
     </div>

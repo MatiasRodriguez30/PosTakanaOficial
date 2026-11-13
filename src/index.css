@@ -1,10 +1,21 @@
+@import '@fontsource/ibm-plex-sans/400.css';
+@import '@fontsource/ibm-plex-sans/500.css';
+@import '@fontsource/ibm-plex-sans/600.css';
+@import '@fontsource/ibm-plex-sans/700.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+@import '@fontsource/ibm-plex-mono/600.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  html {
+    font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  }
+
   body {
-    background: #0b0f19;
     min-height: 100vh;
   }
 
@@ -16,38 +27,50 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(148, 163, 184, 0.25);
+    background: rgba(100, 116, 139, 0.35);
     border-radius: 9999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(148, 163, 184, 0.4);
+    background: rgba(100, 116, 139, 0.55);
   }
 }
 
-/* Panel plano: fondo sólido, borde simple, sin blur ni transparencia */
-.glass-panel {
-  background: #111827;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+@layer components {
+  .surface-card {
+    @apply bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg;
+  }
+
+  .input-base {
+    @apply w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-400 dark:border-slate-600 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-brand-700 dark:focus:ring-brand-400 focus:border-brand-700 dark:focus:border-brand-400 transition-colors;
+  }
+
+  .btn-brand {
+    @apply bg-brand-700 hover:bg-brand-800 active:bg-brand-900 text-white font-semibold rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-700 focus:ring-offset-2 dark:focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-400 dark:border-slate-600 font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-700 focus:ring-offset-2 dark:focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-danger {
+    @apply bg-red-700 hover:bg-red-800 active:bg-red-900 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-700 focus:ring-offset-2 dark:focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .badge-base {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium;
+  }
 }
 
-.glass-panel-hover {
-  transition: border-color 0.15s ease;
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
-.glass-panel-hover:hover {
-  border-color: rgba(99, 102, 241, 0.4);
-}
-
-/* Botón principal: color sólido, sin degradé ni animación de elevación */
-.btn-premium {
-  background: #4f46e5;
-  transition: background-color 0.15s ease;
-}
-
-.btn-premium:hover {
-  background: #4338ca;
-}
-
-.btn-premium:active {
-  background: #3730a3;
+@media print {
+  @page {
+    margin: 4mm;
+  }
 }
